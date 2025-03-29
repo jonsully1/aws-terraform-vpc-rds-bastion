@@ -19,27 +19,19 @@ module "vpc" {
   }
 }
 
-module "security_group" {
-  source  = "../../modules/terraform-aws-security-group"
+module "fck-nat" {
+  source  = "RaJiska/fck-nat/aws"
+  version = "1.3.0"
 
-  name        = "${var.infra_name}-${var.env}-rds-security-group"
-  description = "Security group for RDS"
-  vpc_id      = module.vpc.vpc_id
+  name      = "${var.infra_name}-${var.env}-fck-nat"
+  vpc_id    = module.vpc.vpc_id
+  subnet_id = element(module.vpc.public_subnets, 0)
+  # ha_mode              = true                 # Enables high-availability mode
+  # eip_allocation_ids   = ["eipalloc-abc1234"] # Allocation ID of an existing EIP
+  # use_cloudwatch_agent = true                 # Enables Cloudwatch agent and have metrics reported
 
-  # ingress
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 3306
-      to_port     = 3306
-      protocol    = "tcp"
-      description = "MySQL access from within VPC"
-      cidr_blocks = module.vpc.vpc_cidr_block
-    },
-  ]
-
-  tags = {
-    Name        = "${var.infra_name}-${var.env}-rds-security-group"
-    Environment = var.env
-    Terraform   = var.terraform
+  update_route_tables = true
+  route_tables_ids = {
+    "${module.vpc.private_route_table_ids[0]}" = module.vpc.private_route_table_ids[0]
   }
 }
