@@ -5,14 +5,21 @@ module "rds_security_group" {
   description = "Security group for RDS"
   vpc_id      = module.vpc.vpc_id
 
-  ingress_with_cidr_blocks = [
+  ingress_with_source_security_group_id = [
     {
-      from_port   = 3306
-      to_port     = 3306
-      protocol    = "tcp"
-      description = "MySQL access from within VPC"
-      cidr_blocks = module.vpc.vpc_cidr_block
+      from_port                = 3306
+      to_port                  = 3306
+      protocol                 = "tcp"
+      description              = "MySQL access from bastion"
+      source_security_group_id = module.bastion_security_group.security_group_id
     },
+    {
+      from_port                = 3306
+      to_port                  = 3306
+      protocol                 = "tcp"
+      description              = "MySQL access from Lambda"
+      source_security_group_id = module.lambda_security_group.security_group_id
+    }
   ]
 
   tags = {

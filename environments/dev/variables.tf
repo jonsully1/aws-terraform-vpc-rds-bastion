@@ -24,12 +24,6 @@ variable "env" {
   type        = string
 }
 
-variable "db_identifier" {
-  description = "The identifier for the RDS instance"
-  type        = string
-  default = "jonsully1"
-}
-
 variable "db_username" {
   description = "The username for the database"
   type        = string
@@ -52,8 +46,26 @@ variable "eu_west_2_availability_zones" {
   default     = ["eu-west-2a", "eu-west-2b", "eu-west-2c"]
 }
 
-  variable "vpc_cidr" {
-    description = "The CIDR block for the VPC"
-    type        = string
-    default     = "10.0.0.0/16"
-  }
+variable "vpc_cidr" {
+  description = "The CIDR block for the VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
+variable "bastion__host_ami" {
+  description = "The AMI ID for the bastion host"
+  type        = string
+  default     = "ami-00b60d039dbf51b19"
+}
+
+variable "bastion_host_key_name" {
+  description = "The key pair name for the bastion host"
+  type        = string
+  default     = "my-new-key-pair"
+}
+
+variable "bastion_host_instance_type" {
+  description = "The instance type to use for the bastion host"
+  type        = string
+  default     = "t4g.micro"
+}

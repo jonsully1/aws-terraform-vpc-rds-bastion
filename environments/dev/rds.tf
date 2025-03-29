@@ -11,9 +11,6 @@ module "rds" {
   allocated_storage     = 20
   max_allocated_storage = 20
 
-  username = var.db_username
-  password = var.db_password
-
   multi_az               = false
   db_subnet_group_name   = module.vpc.database_subnet_group
   vpc_security_group_ids = [module.rds_security_group.security_group_id]
