@@ -1,6 +1,5 @@
 module "rds" {
-  source  = "terraform-aws-modules/rds/aws"
-  version = "~> 5.0"
+  source  = "../../modules/terraform-aws-rds"
 
   identifier           = "${var.infra_name}-${var.env}-rds-instance"
   engine               = "mysql"
@@ -22,7 +21,7 @@ module "rds" {
   maintenance_window              = "Mon:00:00-Mon:03:00"
   backup_window                   = "03:00-06:00"
   backup_retention_period = 7
-  
+
   enabled_cloudwatch_logs_exports = ["general"]
   create_cloudwatch_log_group     = true
 

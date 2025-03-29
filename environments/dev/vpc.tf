@@ -20,8 +20,7 @@ module "vpc" {
 }
 
 module "security_group" {
-  source  = "terraform-aws-modules/security-group/aws"
-  version = "~> 5.0"
+  source  = "../../modules/terraform-aws-security-group"
 
   name        = "${var.infra_name}-${var.env}-rds-security-group"
   description = "Security group for RDS"
