@@ -1,5 +1,5 @@
 module "rds" {
-  source  = "../../modules/terraform-aws-rds"
+  source = "../../modules/terraform-aws-rds"
 
   identifier           = "${var.infra_name}-${var.env}-rds-instance"
   engine               = "mysql"
@@ -15,16 +15,16 @@ module "rds" {
   db_subnet_group_name   = module.vpc.database_subnet_group
   vpc_security_group_ids = [module.rds_security_group.security_group_id]
 
-  maintenance_window              = "Mon:00:00-Mon:03:00"
-  backup_window                   = "03:00-06:00"
+  maintenance_window      = "Mon:00:00-Mon:03:00"
+  backup_window           = "03:00-06:00"
   backup_retention_period = 7
 
   enabled_cloudwatch_logs_exports = ["general"]
   create_cloudwatch_log_group     = true
 
-  publicly_accessible     = false
-  deletion_protection     = true
-  skip_final_snapshot     = false
+  publicly_accessible = false
+  deletion_protection = true
+  skip_final_snapshot = false
 
   parameters = [
     {

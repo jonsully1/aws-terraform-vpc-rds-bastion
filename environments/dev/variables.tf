@@ -3,11 +3,6 @@ variable "aws_region" {
   type        = string
 }
 
-variable "aws_profile" {
-  description = "AWS CLI profile to use"
-  type        = string
-}
-
 variable "infra_name" {
   description = "The infrastructure name"
   type        = string

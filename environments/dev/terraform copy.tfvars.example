@@ -1,7 +1,4 @@
 aws_region  = "eu-west-2"
-aws_profile = ""
 infra_name = "johno"
 env = "dev"
-db_username = "admin"
-db_password = ""
 my_ip = "your IP/32"
