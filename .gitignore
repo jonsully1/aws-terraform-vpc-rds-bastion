@@ -3,3 +3,6 @@
 terraform.tfvars
 tfplan
 *.pem
+.terragrunt-cache/
+env.dev.hcl
+
