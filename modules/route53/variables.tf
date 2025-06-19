@@ -2,6 +2,7 @@ variable "route53_hosted_zones" {
   description = "List of Route53 hosted zones and their records"
   type = list(object({
     name    = string
+    zone_id = optional(string)
     comment = optional(string)
     tags    = object({
       project = string
