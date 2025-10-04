@@ -112,6 +112,151 @@ Run the following command to provision the infrastructure:
 terragrunt run-all apply tfplan
 ```
 
+## Connect to RDS via Bastion Host
+
+### 1. Ensure bastion host is deployed
+
+Set `bastion_enabled` to `true`:
+
+*environments/dev/bastion-host/terragrunt.hcl*
+```bash
+...
+
+inputs = merge(
+  local.env_vars.inputs,
+  {
+    bastion_enabled           = true,  # Set to true to enable the bastion host
+    ...
+  }
+)
+```
+### 2. Create a secure tunnel
+
+Compile the following command from the terraform apply output and run from the project root in a new terminal:
+
+```bash
+ssh -i environments/dev/key-pairs/bastion-host-private-key.pem -L 3306:<rds_{mysql or postgres}_db_instance_endpoint>:3306 ec2-user@<bastion_host_public_ip>
+```
+
+example:
+```bash
+❯ ssh -i environments/dev/key-pairs/bastion-host-private-key.pem -L 3306:<rds_{mysql or postgres}_db_instance_endpoint>:3306 ec2-user@<bastion_host_public_ip>
+Last login: Fri Oct  3 21:14:48 2025 from 95.214.229.91
+   ,     #_
+   ~\_  ####_        Amazon Linux 2
+  ~~  \_#####\
+  ~~     \###|       AL2 End of Life is 2025-06-30.
+  ~~       \#/ ___
+   ~~       V~' '->
+    ~~~         /    A newer version of Amazon Linux is available!
+      ~~._.   _/
+         _/ _/       Amazon Linux 2023, GA and supported until 2028-03-15.
+       _/m/'           https://aws.amazon.com/linux/amazon-linux-2023/
+
+44 package(s) needed for security, out of 57 available
+Run "sudo yum update" to apply all updates.
+```
+
+### 3. Connect to the database (creds in AWS Secrets Manager)
+
+Open a 3rd terminal and connect.
+
+#### Postgres
+
+```bash
+❯ psql -U postgres -h localhost -p 5432 postgres
+Password for user postgres:
+psql (15.8 (Postgres.app), server 14.13)
+SSL connection (protocol: TLSv1.2, cipher: ECDHE-RSA-AES256-GCM-SHA384, compression: off)
+Type "help" for help.
+
+postgres=> \l
+                                                 List of databases
+   Name    |  Owner   | Encoding |   Collate   |    Ctype    | ICU Locale | Locale Provider |   Access privileges
+-----------+----------+----------+-------------+-------------+------------+-----------------+-----------------------
+ postgres  | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |            | libc            |
+ rdsadmin  | rdsadmin | UTF8     | en_US.UTF-8 | en_US.UTF-8 |            | libc            | rdsadmin=CTc/rdsadmin
+ template0 | rdsadmin | UTF8     | en_US.UTF-8 | en_US.UTF-8 |            | libc            | =c/rdsadmin          +
+           |          |          |             |             |            |                 | rdsadmin=CTc/rdsadmin
+ template1 | postgres | UTF8     | en_US.UTF-8 | en_US.UTF-8 |            | libc            | =c/postgres          +
+           |          |          |             |             |            |                 | postgres=CTc/postgres
+(4 rows)
+
+postgres=>
+```
+
+#### MySql
+
+**NOTE:** On a few occasions I've hit the following error:
+
+```bash
+❯ mysql -h 127.0.0.1 -P 3306 -u admin -p
+Enter password:
+ERROR 2059 (HY000): Authentication plugin 'mysql_native_password' cannot be loaded: dlopen(/opt/homebrew/Cellar/mysql/9.3.0/lib/plugin/mysql_native_password.so, 0x0002): tried: '/opt/homebrew/Cellar/mysql/9.3.0/lib/plugin/mysql_native_password.so' (no such file), '/System/Volumes/Preboot/Cryptexes/OS/opt/homebrew/Cellar/mysql/9.3.0/lib/plugin/mysql_native_password.so' (no such file), '/opt/homebrew/Cellar/mysql/9.3.0/lib/plugin/mysql_native_password.so' (no such file)
+```
+
+Essentially needed to downgrade mysql client to 8.0:
+
+```bash
+brew install mysql@8.0
+```
+
+Then add 8.0 to the beginning of your PATH so it takes precedence:
+```bash
+echo 'export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+And connect:
+
+```bash
+❯ mysql -h 127.0.0.1 -P 3306 -u admin -p
+Enter password:
+Welcome to the MySQL monitor.  Commands end with ; or \g.
+Your MySQL connection id is 44821
+Server version: 8.0.41 Source distribution
+
+Copyright (c) 2000, 2025, Oracle and/or its affiliates.
+
+Oracle is a registered trademark of Oracle Corporation and/or its
+affiliates. Other names may be trademarks of their respective
+owners.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+mysql> show databases;
++--------------------+
+| Database           |
++--------------------+
+| eac_school         |
+| information_schema |
+| mysql              |
+| performance_schema |
+| sys                |
++--------------------+
+5 rows in set (0.25 sec)
+```
+
+## Provide Internet Access to Lambdas
+
+Ensure the NAT Gateway (`fck-nat`) is enabled:
+
+*environments/dev/nat-gateway/terragrunt.hcl*
+```bash
+...
+
+inputs = merge(
+  local.env_vars.inputs,
+  {
+    nat_enabled = true  # Set to true when needed
+    ...
+
+   }
+)
+```
+
+
+
 ## Modules
 
 ### RDS

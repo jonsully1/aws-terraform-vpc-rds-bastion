@@ -10,3 +10,6 @@ output "bastion_security_group_id" {
   value = module.bastion_security_group.security_group_id
 }
 
+output "rds_postgres_db_security_group_id" {
+  value = module.rds_postgres_db_security_group.security_group_id
+}

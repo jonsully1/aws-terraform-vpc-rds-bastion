@@ -6,8 +6,8 @@ variable "env" {
   type = string
 }
 
-variable "my_ip" {
-  type = string
+variable "my_ips" {
+  type = list(string)
 }
 
 variable "iac" {

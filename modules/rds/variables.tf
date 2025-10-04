@@ -17,3 +17,7 @@ variable "database_subnet_group" {
 variable "rds_security_group_id" {
   type = string
 }
+
+variable "rds_postgres_db_security_group_id" {
+  type = string
+}

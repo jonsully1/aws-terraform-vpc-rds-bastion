@@ -36,3 +36,9 @@ variable "bastion_security_group_id" {
   type        = string
 }
 
+variable "bastion_enabled" {
+  description = "Whether to create the bastion host"
+  type        = bool
+  default     = true
+}
+

@@ -17,3 +17,9 @@ variable "public_subnets" {
 variable "private_route_table_ids" {
   type = list(string)
 }
+
+variable "nat_enabled" {
+  description = "Whether to create the NAT gateway"
+  type        = bool
+  default     = true
+}

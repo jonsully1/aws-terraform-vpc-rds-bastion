@@ -29,6 +29,7 @@ terraform {
 inputs = merge(
   local.env_vars.inputs,
   {
+    nat_enabled = true  # Set to true when needed
     vpc_id                  = dependency.vpc.outputs.vpc_id,
     public_subnets          = dependency.vpc.outputs.public_subnets,
     private_route_table_ids = dependency.vpc.outputs.private_route_table_ids

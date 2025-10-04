@@ -1,6 +1,7 @@
 module "bastion_host" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "5.7.1"
+  count   = var.bastion_enabled ? 1 : 0
 
   name = "${var.infra_name}-${var.env}-bastion-host"
 
