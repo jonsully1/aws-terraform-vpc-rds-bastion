@@ -52,7 +52,7 @@ module "rds-postgres" {
 
   identifier           = "${var.infra_name}-${var.env}-rds-postgres-instance"
   engine               = "postgres"
-  engine_version       = "14.13"
+  engine_version       = "14.17"
   family               = "postgres14"
   major_engine_version = "14"
   instance_class       = "db.t3.micro"

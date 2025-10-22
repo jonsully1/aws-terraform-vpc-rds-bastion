@@ -112,6 +112,13 @@ Run the following command to provision the infrastructure:
 terragrunt run-all apply tfplan
 ```
 
+### 6. Get all outputs
+
+```bash
+cd environments/dev
+terragrunt run-all output
+```
+
 ## Connect to RDS via Bastion Host
 
 ### 1. Ensure bastion host is deployed

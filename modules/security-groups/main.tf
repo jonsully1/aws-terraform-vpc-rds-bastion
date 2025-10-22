@@ -91,7 +91,7 @@ module "bastion_security_group" {
       protocol    = "tcp"
       description = "SSH access from my parents IP"
       cidr_blocks = var.my_ips[1]
-    }, 
+    },
     {
       from_port   = 22
       to_port     = 22
