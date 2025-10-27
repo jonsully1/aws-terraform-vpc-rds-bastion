@@ -10,6 +10,8 @@ This repository contains Terraform and Terragrunt configurations to provision a 
 - **NAT Gateway**: Configures a NAT Gateway for outbound internet access from private subnets.
 - **Security Groups**: Manages security groups for RDS, Bastion Host, and Lambda functions.
 - **Key Pairs**: Generates and manages SSH key pairs for the Bastion Host.
+- **Route53**: Manages DNS records for your domains.
+- **AWS SES**: Send transactional emails from your application (user invitations, notifications, etc.).
 
 ## Repository Structure
 
@@ -52,6 +54,10 @@ This repository contains Terraform and Terragrunt configurations to provision a 
     │   ├── outputs.tf
     │   └── variables.tf
     └── vpc
+        ├── main.tf
+        ├── outputs.tf
+        └── variables.tf
+    └── ses
         ├── main.tf
         ├── outputs.tf
         └── variables.tf
@@ -262,6 +268,341 @@ inputs = merge(
 )
 ```
 
+## AWS SES Email Setup (Send-Only)
+
+This infrastructure includes AWS SES (Simple Email Service) configured for **sending emails** from your application. This is perfect for transactional emails like user invitations, password resets, notifications, etc.
+
+### What This Does
+
+- **Domain Identity Verification**: Automatically verifies your domain via Route53 DNS records
+- **SPF & DKIM**: Configures email authentication to improve deliverability
+- **SMTP & API Access**: Enables both SMTP and AWS SDK/API sending methods
+- **Works with Google Workspace**: Coexists perfectly with your existing email setup
+
+### Configuration
+
+#### 1. Update Environment Variables
+
+Edit `env.dev.hcl` and configure your domain:
+
+```hcl
+# AWS SES Configuration (Send-Only)
+ses_domains = [
+  {
+    domain_name = "example.com"
+    zone_id     = "Z0123456789ABCDEFGHIJ"  # Your Route53 zone ID
+  }
+]
+```
+
+#### 2. Deploy SES Infrastructure
+
+Navigate to the SES directory and deploy:
+
+```bash
+cd environments/dev/ses
+terragrunt init
+terragrunt plan
+terragrunt apply
+```
+
+This will create:
+- SES domain identity with verification records
+- Route53 TXT records for domain verification
+- Route53 TXT records for DKIM authentication
+- Route53 TXT record for SPF (if not already present)
+
+#### 3. Wait for Domain Verification
+
+AWS will automatically verify your domain through the DNS records (usually takes 5-10 minutes):
+
+```bash
+# Check domain verification status
+aws sesv2 get-email-identity --email-identity example.com
+```
+
+Look for `"VerificationStatus": "SUCCESS"` in the output. Example successful response:
+
+```json
+{
+    "IdentityType": "DOMAIN",
+    "VerifiedForSendingStatus": true,
+    "DkimAttributes": {
+        "SigningEnabled": true,
+        "Status": "SUCCESS",
+        "Tokens": [
+            "abcd1234example5678",
+            "efgh5678example9012",
+            "ijkl9012example3456"
+        ]
+    },
+    "MailFromAttributes": {
+        "MailFromDomain": "mail.example.com",
+        "MailFromDomainStatus": "SUCCESS",
+        "BehaviorOnMxFailure": "USE_DEFAULT_VALUE"
+    }
+}
+```
+
+#### 3a. Verify Email Addresses for Testing (Sandbox Mode Only)
+
+While in sandbox mode, you can only send emails to verified email addresses. Verify a test email:
+
+```bash
+# Create an email identity
+aws sesv2 create-email-identity --email-identity user@example.com
+```
+
+AWS will send a verification email to that address. Click the link to verify. Then check the status:
+
+```bash
+# Check email verification status
+aws sesv2 get-email-identity --email-identity user@example.com
+```
+
+Example successful response:
+
+```json
+{
+    "IdentityType": "EMAIL_ADDRESS",
+    "VerifiedForSendingStatus": true,
+    "VerificationStatus": "SUCCESS",
+    "DkimAttributes": {
+        "SigningEnabled": true,
+        "Status": "SUCCESS",
+        "Tokens": [
+            "abcd1234example5678",
+            "efgh5678example9012",
+            "ijkl9012example3456"
+        ]
+    },
+    "MailFromAttributes": {
+        "MailFromDomain": "mail.example.com",
+        "MailFromDomainStatus": "SUCCESS",
+        "BehaviorOnMxFailure": "USE_DEFAULT_VALUE"
+    }
+}
+```
+
+#### 4. Move Out of SES Sandbox (For Production)
+
+By default, AWS SES starts in "sandbox mode" with these limitations:
+- Can only send to verified email addresses
+- Maximum 200 emails per 24 hours
+- 1 email per second sending rate
+
+**To send to any email address (required for production):**
+
+1. Go to the [AWS SES Console](https://console.aws.amazon.com/ses/)
+2. Click **Get Set Up** or go to **Account dashboard**
+3. Click **Request production access**
+4. Fill out the form:
+   - Use case: Transactional emails (invitations, notifications)
+   - Website URL: Your application URL
+   - Describe how you handle bounces/complaints
+   - Expected daily sending volume
+5. Submit the request
+
+Approval typically takes 24 hours. Until then, you can still test by verifying recipient email addresses.
+
+#### 5. Create SMTP Credentials (For Application Use)
+
+To send emails from your application:
+
+**Option A: Using SMTP**
+
+1. Go to the [AWS SES Console](https://console.aws.amazon.com/ses/)
+2. Navigate to **Account dashboard** → **SMTP settings**
+3. Click **Create SMTP credentials**
+4. Save the SMTP username and password
+5. Use these in your application:
+   ```
+   SMTP Server: email-smtp.eu-west-2.amazonaws.com
+   Port: 587 (TLS) or 465 (SSL)
+   Username: <your-smtp-username>
+   Password: <your-smtp-password>
+   ```
+
+**Option B: Using AWS SDK**
+
+Use the AWS SDK with your IAM credentials:
+- Service: `sesv2` (Simple Email Service v2)
+- Action: `SendEmail`
+- Your application's IAM role needs the `ses:SendEmail` permission
+
+### Sending Your First Email
+
+**Test with AWS CLI (Sandbox Mode):**
+
+While in sandbox mode, you can only send to verified email addresses:
+
+```bash
+# Send a test email
+aws sesv2 send-email \
+  --from-email-address noreply@example.com \
+  --destination ToAddresses=user@example.com \
+  --content 'Simple={Subject={Data="SES Test - Success!",Charset=utf8},Body={Text={Data="This email confirms your AWS SES setup is working perfectly!",Charset=utf8}}}'
+```
+
+Successful response:
+
+```json
+{
+    "MessageId": "010b019a26cc4fe9-fb6c4a9e-0cb7-4a7d-be8f-247416dd6ab4-000000"
+}
+```
+
+The `MessageId` confirms the email was accepted by SES and is being delivered.
+
+**Test with AWS CLI (Production Mode):**
+
+After production access is approved, you can send to any email address:
+
+```bash
+aws sesv2 send-email \
+  --from-email-address noreply@example.com \
+  --destination ToAddresses=user@example.com \
+  --content 'Simple={Subject={Data="Test Email",Charset=utf8},Body={Text={Data="This is a test email",Charset=utf8}}}'
+```
+
+**Using Node.js SDK:**
+
+```javascript
+const { SESv2Client, SendEmailCommand } = require("@aws-sdk/client-sesv2");
+
+const client = new SESv2Client({ region: "eu-west-2" });
+
+const command = new SendEmailCommand({
+  FromEmailAddress: "noreply@example.com",
+  Destination: {
+    ToAddresses: ["user@example.com"]
+  },
+  Content: {
+    Simple: {
+      Subject: { Data: "Invitation to Join" },
+      Body: { 
+        Html: { Data: "<h1>You're invited!</h1><p>Click here to join...</p>" }
+      }
+    }
+  }
+});
+
+await client.send(command);
+```
+
+### Verification Commands Reference
+
+These commands are useful for troubleshooting and monitoring your SES setup:
+
+```bash
+# Check domain verification and configuration
+aws sesv2 get-email-identity --email-identity example.com
+
+# Check email address verification
+aws sesv2 get-email-identity --email-identity user@example.com
+
+# List all verified identities
+aws sesv2 list-email-identities
+
+# Check account sending statistics
+aws sesv2 get-account
+
+# View sending statistics for last 14 days
+aws sesv2 get-domain-statistics-report \
+  --domain example.com \
+  --start-date 2025-10-13T00:00:00Z \
+  --end-date 2025-10-27T23:59:59Z
+```
+
+### Email Best Practices
+
+1. **Use appropriate From addresses:**
+   - `noreply@example.com` - for notifications
+   - `invitations@example.com` - for user invitations
+   - `support@example.com` - for support emails (if separate from Google Workspace)
+
+2. **Handle bounces and complaints:**
+   - Set up SNS notifications for bounces/complaints
+   - Remove bounced emails from your sending list
+   - Monitor your reputation in SES Console
+
+3. **Warm up your sending:**
+   - Start with low volume (100-200/day)
+   - Gradually increase over 2-4 weeks
+   - Maintain consistent sending patterns
+
+### Troubleshooting
+
+**Domain not verifying:**
+- Check Route53 records are created correctly
+- Wait 10-15 minutes for DNS propagation
+- Run: `dig TXT _amazonses.example.com`
+- Verify DKIM records: `dig TXT <token>._domainkey.example.com`
+- Verify MAIL FROM MX record: `dig MX mail.example.com`
+
+**Still in Sandbox mode:**
+- Submit production access request in SES Console (typically approved within 24 hours)
+- While waiting, verify recipient email addresses for testing:
+  ```bash
+  aws sesv2 create-email-identity --email-identity recipient@example.com
+  ```
+
+**Email verification not working:**
+- Check spam folder for verification email
+- Resend verification:
+  ```bash
+  aws sesv2 create-email-identity --email-identity user@example.com
+  ```
+- If you get `AlreadyExistsException`, the identity exists but may need clicking the verification link
+
+**Emails going to spam:**
+- Ensure DKIM is verified (check SES Console)
+- Add SPF record: `v=spf1 include:amazonses.com ~all`
+- Warm up your sending gradually
+- Use consistent From addresses
+- Include unsubscribe links
+
+**Authentication errors:**
+- Verify SMTP credentials are correct
+- Check IAM permissions for SDK usage
+- Ensure your application's IAM role has `ses:SendEmail` permission
+
+### Cost Considerations
+
+SES sending costs:
+- **First 62,000 emails/month**: FREE (if sent from EC2/Lambda)
+- **After that**: $0.10 per 1,000 emails
+- **Attachments**: $0.12 per GB
+
+For 10,000 invitation emails/month: **FREE**
+
+### Integration with Your Application
+
+Since you're using this for user invitations, you'll want to:
+
+1. **Store SMTP credentials in AWS Secrets Manager:**
+   ```bash
+   aws secretsmanager create-secret \
+     --name ses-smtp-credentials \
+     --secret-string '{"username":"AKIAXXXXX","password":"BXXXXXXX"}'
+   ```
+
+2. **Add IAM policy to your application's role:**
+   ```json
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Effect": "Allow",
+       "Action": ["ses:SendEmail", "ses:SendRawEmail"],
+       "Resource": "*"
+     }]
+   }
+   ```
+
+3. **Configure your email library** (examples for popular frameworks available in the documentation)
+
+
+
 
 
 ## Modules
@@ -285,6 +626,16 @@ inputs = merge(
 ### Key Pairs
 - **Source**: [terraform-aws-modules/key-pair/aws](https://registry.terraform.io/modules/terraform-aws-modules/key-pair/aws/latest)
 - **Features**: Generates and manages SSH key pairs.
+
+### SES (Simple Email Service)
+- **Custom Module**: `modules/ses`
+- **Features**: 
+  - Send transactional emails from your application
+  - Automatic domain verification via Route53
+  - DKIM and SPF configuration for email authentication
+  - SMTP and AWS SDK/API support
+  - Cost-effective (62,000 free emails/month from EC2/Lambda)
+  - Works alongside Google Workspace
 
 ## License
 
