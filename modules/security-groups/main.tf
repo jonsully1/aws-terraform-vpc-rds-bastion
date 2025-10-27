@@ -77,29 +77,7 @@ module "bastion_security_group" {
   description = "Security group for Bastion"
   vpc_id      = var.vpc_id
 
-  ingress_with_cidr_blocks = [
-    {
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      description = "SSH access from my home IP"
-      cidr_blocks = var.my_ips[0]
-    },
-    {
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      description = "SSH access from my parents IP"
-      cidr_blocks = var.my_ips[1]
-    },
-    {
-      from_port   = 22
-      to_port     = 22
-      protocol    = "tcp"
-      description = "SSH access from my parents IP"
-      cidr_blocks = var.my_ips[2]
-    },
-  ]
+  ingress_with_cidr_blocks = var.my_ips
 
   egress_with_cidr_blocks = [
     {

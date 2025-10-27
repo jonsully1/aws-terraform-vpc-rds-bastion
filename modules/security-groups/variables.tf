@@ -7,7 +7,13 @@ variable "env" {
 }
 
 variable "my_ips" {
-  type = list(string)
+  type = list(object({
+    from_port   = number
+    to_port     = number
+    protocol    = string
+    description = string
+    cidr_blocks = string
+  }))
 }
 
 variable "iac" {
