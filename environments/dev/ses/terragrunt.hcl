@@ -23,5 +23,10 @@ inputs = merge(
   {
     # Pass the ses_domains from env.dev.hcl as the domains variable
     domains = local.env_vars.inputs.ses_domains
+    
+    # DMARC configuration (highly recommended for deliverability)
+    enable_dmarc_record = true
+    dmarc_policy        = "quarantine"  # Options: "none" (monitor), "quarantine" (spam folder), "reject" (block)
+    dmarc_rua_email     = "dmarc-reports@londoncityweb.com"  # Where to receive DMARC reports (optional)
   }
 )

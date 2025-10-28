@@ -28,6 +28,29 @@ variable "enable_mail_from_domain" {
   default     = true
 }
 
+variable "enable_dmarc_record" {
+  description = "Whether to create DMARC record (highly recommended for email deliverability and preventing spoofing)"
+  type        = bool
+  default     = true
+}
+
+variable "dmarc_policy" {
+  description = "DMARC policy: none (monitor only), quarantine (move suspicious to spam), or reject (block suspicious emails)"
+  type        = string
+  default     = "quarantine"
+  
+  validation {
+    condition     = contains(["none", "quarantine", "reject"], var.dmarc_policy)
+    error_message = "DMARC policy must be one of: none, quarantine, reject"
+  }
+}
+
+variable "dmarc_rua_email" {
+  description = "Email address to receive DMARC aggregate reports (optional, but recommended for monitoring)"
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   description = "Common tags for all resources"
   type        = map(string)

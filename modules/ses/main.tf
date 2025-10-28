@@ -84,3 +84,17 @@ resource "aws_route53_record" "mail_from_spf" {
   ttl     = 600
   records = ["v=spf1 include:amazonses.com ~all"]
 }
+
+# DMARC record for email authentication and reporting
+# This tells email providers how to handle emails that fail SPF/DKIM checks
+resource "aws_route53_record" "dmarc_record" {
+  for_each = var.enable_dmarc_record ? { for idx, domain in var.domains : idx => domain } : {}
+
+  zone_id = each.value.zone_id
+  name    = "_dmarc.${each.value.domain_name}"
+  type    = "TXT"
+  ttl     = 600
+  records = [
+    "v=DMARC1; p=${var.dmarc_policy}; pct=100; adkim=r; aspf=r${var.dmarc_rua_email != "" ? "; rua=mailto:${var.dmarc_rua_email}" : ""}"
+  ]
+}

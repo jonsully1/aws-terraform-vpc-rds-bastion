@@ -275,9 +275,19 @@ This infrastructure includes AWS SES (Simple Email Service) configured for **sen
 ### What This Does
 
 - **Domain Identity Verification**: Automatically verifies your domain via Route53 DNS records
-- **SPF & DKIM**: Configures email authentication to improve deliverability
+- **Email Authentication (SPF, DKIM, DMARC)**: Configures all three authentication methods to maximize deliverability and prevent spam
 - **SMTP & API Access**: Enables both SMTP and AWS SDK/API sending methods
 - **Works with Google Workspace**: Coexists perfectly with your existing email setup
+
+### Why Email Authentication Matters
+
+Without proper authentication, your emails are likely to end up in spam folders. This infrastructure automatically configures:
+
+1. **SPF (Sender Policy Framework)**: Tells email providers which servers can send email from your domain
+2. **DKIM (DomainKeys Identified Mail)**: Cryptographically signs your emails to prove they haven't been tampered with
+3. **DMARC (Domain-based Message Authentication)**: Instructs email providers what to do if SPF/DKIM checks fail, and provides you with reports
+
+**Real Impact**: Without DMARC, Gmail and other providers are significantly more likely to mark your emails as spam. With all three authentication methods properly configured, your legitimate emails will have much better inbox placement.
 
 ### Configuration
 
@@ -309,8 +319,11 @@ terragrunt apply
 This will create:
 - SES domain identity with verification records
 - Route53 TXT records for domain verification
-- Route53 TXT records for DKIM authentication
-- Route53 TXT record for SPF (if not already present)
+- Route53 CNAME records for DKIM authentication (3 tokens)
+- Route53 TXT record for SPF (if enabled)
+- Route53 TXT record for DMARC policy
+- Route53 MX record for custom MAIL FROM domain
+- Route53 TXT record for MAIL FROM SPF
 
 #### 3. Wait for Domain Verification
 
@@ -512,6 +525,9 @@ aws sesv2 get-domain-statistics-report \
   --domain example.com \
   --start-date 2025-10-13T00:00:00Z \
   --end-date 2025-10-27T23:59:59Z
+
+# Verify DMARC record is configured
+dig TXT _dmarc.example.com
 ```
 
 ### Email Best Practices
@@ -531,6 +547,12 @@ aws sesv2 get-domain-statistics-report \
    - Gradually increase over 2-4 weeks
    - Maintain consistent sending patterns
 
+4. **Monitor DMARC reports:**
+   - DMARC reports are sent to the email configured in your terragrunt configuration
+   - Reports show authentication success/failure rates
+   - Help identify any unauthorized use of your domain
+   - Typically sent daily or weekly by major email providers
+
 ### Troubleshooting
 
 **Domain not verifying:**
@@ -538,6 +560,7 @@ aws sesv2 get-domain-statistics-report \
 - Wait 10-15 minutes for DNS propagation
 - Run: `dig TXT _amazonses.example.com`
 - Verify DKIM records: `dig TXT <token>._domainkey.example.com`
+- Verify DMARC record: `dig TXT _dmarc.example.com`
 - Verify MAIL FROM MX record: `dig MX mail.example.com`
 
 **Still in Sandbox mode:**
@@ -556,11 +579,20 @@ aws sesv2 get-domain-statistics-report \
 - If you get `AlreadyExistsException`, the identity exists but may need clicking the verification link
 
 **Emails going to spam:**
-- Ensure DKIM is verified (check SES Console)
-- Add SPF record: `v=spf1 include:amazonses.com ~all`
-- Warm up your sending gradually
+- ✅ Ensure DKIM is verified (check SES Console)
+- ✅ Ensure DMARC record exists: `dig TXT _dmarc.example.com`
+- ✅ Verify SPF record includes amazonses.com
+- Start with low volume and warm up your sending (100-200/day initially)
 - Use consistent From addresses
 - Include unsubscribe links
+- Send only to engaged recipients
+- Monitor bounce rates and complaints in SES Console
+
+**DMARC warnings in AWS Console:**
+- DMARC is automatically configured by this infrastructure
+- If you see warnings, verify the `_dmarc.example.com` TXT record exists
+- DMARC reports will be sent to the email configured in `dmarc_rua_email`
+- Policy is set to "quarantine" by default (suspicious emails go to spam, not rejected)
 
 **Authentication errors:**
 - Verify SMTP credentials are correct
@@ -632,10 +664,12 @@ Since you're using this for user invitations, you'll want to:
 - **Features**: 
   - Send transactional emails from your application
   - Automatic domain verification via Route53
-  - DKIM and SPF configuration for email authentication
+  - Complete email authentication (SPF, DKIM, DMARC) for maximum deliverability
+  - DMARC reporting to monitor email authentication and detect spoofing attempts
   - SMTP and AWS SDK/API support
   - Cost-effective (62,000 free emails/month from EC2/Lambda)
   - Works alongside Google Workspace
+  - Prevents emails from going to spam with proper authentication configuration
 
 ## License
 
