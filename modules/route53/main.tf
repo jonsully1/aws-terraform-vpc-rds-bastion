@@ -9,7 +9,7 @@ module "zones" {
     }
   }
 
-    tags = {
+  tags = {
     Name        = "${var.infra_name}-${var.env}-route53-hosted-zones"
     Environment = var.env
     IaC         = var.iac
@@ -20,7 +20,7 @@ module "records" {
   source  = "terraform-aws-modules/route53/aws//modules/records"
   version = "~> 3.0"
 
-  for_each = { for zone in var.route53_hosted_zones : zone.name => zone }
+  for_each = { for zone in var.route53_hosted_zones : zone.name => zone if try(length(zone.records), 0) > 0 }
 
   zone_name = each.key
   zone_id   = each.value.zone_id
