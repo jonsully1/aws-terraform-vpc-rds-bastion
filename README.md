@@ -172,9 +172,21 @@ Run "sudo yum update" to apply all updates.
 
 ### 3. Connect to the database (creds in AWS Secrets Manager)
 
+**NOTE**: Ensure a postgres or mysql client is installed locally.
+
 Open a 3rd terminal and connect.
 
 #### Postgres
+
+Install client if needed:
+
+```bash
+brew install libpq
+echo 'export PATH="/opt/homebrew/opt/libpq/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Connect using psql:
 
 ```bash
 ❯ psql -U postgres -h localhost -p 5432 postgres
