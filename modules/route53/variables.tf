@@ -7,7 +7,15 @@ variable "route53_hosted_zones" {
     tags    = object({
       project = string
     })
-    records = optional(list(any))
+    records = optional(list(object({
+      name    = string
+      type    = string
+      ttl     = number
+      records = list(string)
+      tags    = object({
+        project = string
+      })
+    })))
   }))
   default = []
 }
