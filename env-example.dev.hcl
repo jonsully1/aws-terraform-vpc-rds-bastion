@@ -28,4 +28,30 @@ inputs = {
   sso_create_group      = false
   sso_group_name        = "YourAppName"       # e.g. "HiveBackend"
   sso_group_description = "Application backend — read-only Route 53 and ACM access"
+
+  # -----------------------------------------------------------------
+  # GitHub Actions OIDC Configuration
+  # -----------------------------------------------------------------
+  # Set to true to provision the OIDC provider and IAM assumable role
+  github_oidc_enabled = false
+
+  # GitHub repositories allowed to assume this role
+  # Each entry specifies the org, repo, and which branches/events are permitted
+  github_repos = [
+    {
+      org    = "your-github-org"
+      repo   = "your-infra-repo"
+      claims = ["ref:refs/heads/main"]   # main branch only
+    },
+    # Add more repos as needed:
+    # {
+    #   org    = "your-github-org"
+    #   repo   = "your-app-repo"
+    #   claims = ["*"]                   # any branch
+    # },
+  ]
+
+  # Terraform state backend names (so the role can read/write state)
+  github_oidc_tfstate_bucket_name    = "your-tfstate-bucket-name"
+  github_oidc_tfstate_lock_table_name = "your-tfstate-lock-table-name"
 }
