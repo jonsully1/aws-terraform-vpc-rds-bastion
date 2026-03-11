@@ -12,6 +12,8 @@ This repository contains Terraform and Terragrunt configurations to provision a 
 - **Key Pairs**: Generates and manages SSH key pairs for the Bastion Host.
 - **Route53**: Manages DNS records for your domains.
 - **AWS SES**: Send transactional emails from your application (user invitations, notifications, etc.).
+- **IAM Policy**: Least-privilege read-only IAM policy for Route 53 and ACM access.
+- **IAM Identity Center (SSO)**: SSO permission set and account assignments so the Hive application backend can access Route 53 / ACM via short-lived credentials.
 
 ## Repository Structure
 
@@ -32,7 +34,11 @@ This repository contains Terraform and Terragrunt configurations to provision a 
 │       ├── root.hcl
 │       ├── security-groups
 │       │   └── terragrunt.hcl
-│       └── vpc
+│       ├── vpc
+│       │   └── terragrunt.hcl
+│       ├── iam-policy
+│       │   └── terragrunt.hcl
+│       └── iam-identity-center
 │           └── terragrunt.hcl
 └── modules
     ├── bastion-host
@@ -57,7 +63,15 @@ This repository contains Terraform and Terragrunt configurations to provision a 
         ├── main.tf
         ├── outputs.tf
         └── variables.tf
-    └── ses
+    ├── ses
+    │   ├── main.tf
+    │   ├── outputs.tf
+    │   └── variables.tf
+    ├── iam-policy
+    │   ├── main.tf
+    │   ├── outputs.tf
+    │   └── variables.tf
+    └── iam-identity-center
         ├── main.tf
         ├── outputs.tf
         └── variables.tf
@@ -682,6 +696,48 @@ Since you're using this for user invitations, you'll want to:
   - Cost-effective (62,000 free emails/month from EC2/Lambda)
   - Works alongside Google Workspace
   - Prevents emails from going to spam with proper authentication configuration
+
+### IAM Policy
+- **Custom Module**: `modules/iam-policy`
+- **Features**:
+  - Least-privilege read-only IAM policy for Route 53 and ACM
+  - Configurable actions lists (default: `ListHostedZones`, `ListResourceRecordSets`, `ListCertificates`, `DescribeCertificate`)
+  - Extensible via `additional_policy_statements`
+  - Outputs the policy ARN and rendered JSON for use by other modules
+
+### IAM Identity Center (SSO)
+- **Custom Module**: `modules/iam-identity-center`
+- **Features**:
+  - Creates an SSO permission set with configurable session duration
+  - Attaches an inline policy (uses the IAM Policy module output, or its own default)
+  - Optionally attaches AWS managed policies
+  - Optionally creates a group in the Identity Store
+  - Assigns the permission set to groups/users in specified AWS accounts
+  - Zero long-lived credentials — the application authenticates via short-lived SSO credentials
+
+#### Hive Application SSO Setup (after `terragrunt apply`)
+
+1. Add an SSO profile to `~/.aws/config` on the host running the Hive backend:
+
+```ini
+[profile hive-backend]
+sso_session = hive
+sso_account_id = <YOUR_ACCOUNT_ID>
+sso_role_name = HiveDomainReadOnly
+region = eu-west-2
+
+[sso-session hive]
+sso_start_url = <SSO_START_URL from terraform output>
+sso_region = eu-west-2
+sso_registration_scopes = sso:account:access
+```
+
+2. Authenticate: `aws sso login --profile hive-backend`
+3. Set env vars for the Hive application:
+```bash
+export AWS_PROFILE=hive-backend
+export AWS_SDK_LOAD_CONFIG=1
+```
 
 ## License
 
