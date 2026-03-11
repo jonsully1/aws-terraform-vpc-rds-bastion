@@ -6,3 +6,5 @@ tfplan
 .terragrunt-cache/
 env.dev.hcl
 
+*.md
+!README.md
